@@ -34,18 +34,18 @@ const handleFormState = (elements, value) => {
   }
 };
 
-const handleFeedback = (elements, value) => {
-  elements.feedback.textContent = value;
+const handleFeedback = (elements, value, i18nextInstance) => {
+  elements.feedback.textContent = i18nextInstance.t(`form.feedback.${value}`);
 };
 
-export default (elements) => (path, value, prevValue) => {
+export default (elements, i18nextInstance) => (path, value, prevValue) => {
   switch (path) {
     case 'form.processState':
       handleProcessState(elements, value);
       break;
 
     case 'form.feedback':
-      handleFeedback(elements, value);
+      handleFeedback(elements, value, i18nextInstance);
       break;
 
     case 'form.valid':
