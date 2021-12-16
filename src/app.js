@@ -1,8 +1,11 @@
 import onChange from 'on-change';
 import * as yup from 'yup';
 import i18next from 'i18next';
+import axios from 'axios';
+import _ from 'lodash';
 import render from './render';
 import resources from './locales/resources';
+import parse from './parse';
 
 const app = (i18nextInstance) => {
   const elements = {
@@ -29,30 +32,53 @@ const app = (i18nextInstance) => {
     posts: [],
   }, render(elements, i18nextInstance));
 
-  const validate = (sourceUrl) => yup.string().required().url().notOneOf(state.urls)
-    .validate(sourceUrl)
-    .catch((err) => {
-      throw err;
-    });
+  const proxify = (url) => {
+    const proxy = new URL('https://hexlet-allorigins.herokuapp.com/get?disableCache=true&url=');
+    proxy.searchParams.set('url', url);
+    return proxy;
+  };
+
+  const addId = (posts, feedId) => posts.map((post) => {
+    const postId = _.uniqueId();
+    return { ...post, postId, feedId };
+  });
 
   elements.form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(elements.form);
     const sourceUrl = formData.get('url');
-    try {
-      await validate(sourceUrl);
-      state.form.valid = true;
-      state.form.feedback = null;
-      state.form.processState = 'loading';
-      //       const data = await getFeed(sourceUrl);
-      state.form.processState = 'filling';
-      state.urls.push(sourceUrl);
-      state.form.feedback = 'success';
-    } catch (err) {
-      state.form.valid = false;
-      state.form.feedback = err.type;
-      state.form.processState = 'error';
-    }
+
+    const schema = yup.string().required().url().notOneOf(state.urls);
+
+    schema.validate(sourceUrl)
+      .then(() => {
+        state.form.valid = true;
+        state.form.feedback = 'loading';
+        state.form.processState = 'loading';
+        return axios.get(proxify(sourceUrl));
+      })
+      .then((response) => {
+        const { channel, items } = parse(response.data);
+        const feedId = _.uniqueId();
+        const newFeed = { ...channel, feedId };
+        const newPosts = addId(items, feedId);
+        state.urls.push(sourceUrl);
+        state.feeds.push(newFeed);
+        state.posts.push(...newPosts.reverse());
+        state.form.processState = 'filling';
+        state.form.feedback = 'success';
+      })
+      .catch((err) => {
+        state.form.valid = false;
+        if (axios.isAxiosError(err)) {
+          state.form.feedback = 'axiosError';
+        } else if (err.parseError) {
+          state.form.feedback = 'parseError';
+        } else {
+          state.form.feedback = err.type;
+        }
+        state.form.processState = 'error';
+      });
   });
 };
 
