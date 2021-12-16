@@ -43,6 +43,24 @@ const app = (i18nextInstance) => {
     return { ...post, postId, feedId };
   });
 
+  const updateFeed = (sourceUrl, feedId) => {
+    setTimeout(() => {
+      axios.get(proxify(sourceUrl))
+        .then((response) => {
+          const { items } = parse(response.data);
+          const newItems = _.differenceBy(items, state.posts, 'link');
+
+          if (newItems.length) {
+            const newPosts = addId(newItems, feedId);
+            state.posts.push(...newPosts.reverse());
+          }
+        })
+        .then(() => {
+          updateFeed(sourceUrl, feedId);
+        });
+    }, 5000);
+  };
+
   elements.form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(elements.form);
@@ -67,6 +85,7 @@ const app = (i18nextInstance) => {
         state.posts.push(...newPosts.reverse());
         state.form.processState = 'filling';
         state.form.feedback = 'success';
+        updateFeed(sourceUrl, feedId);
       })
       .catch((err) => {
         state.form.valid = false;
