@@ -16,6 +16,7 @@ export default {
     },
     posts: {
       header: 'Посты',
+      btnPreview: 'Просмотр',
     },
   },
 };

@@ -75,17 +75,30 @@ const handlePosts = (elements, posts, i18nextInstance) => {
   const ul = document.createElement('ul');
   ul.classList.add('list-group', 'border-0', 'rounded-0');
   posts.forEach((post) => {
-    const { title, link, postId } = post;
+    const {
+      title, link, postId, viewed,
+    } = post;
+
     const li = document.createElement('li');
     li.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-start', 'border-0', 'border-end-0');
+
     const a = document.createElement('a');
-    a.classList.add('fw-bold');
+    a.classList.add(viewed ? ('fw-normal', 'link-secondary') : 'fw-bold');
     a.setAttribute('target', '_blank');
     a.setAttribute('rel', 'noopener noreferrer');
     a.setAttribute('data-id', `${postId}`);
     a.href = link;
     a.textContent = title;
-    li.append(a);
+
+    const btn = document.createElement('button');
+    btn.classList.add('btn', 'btn-outline-primary', 'btn-sm');
+    btn.setAttribute('type', 'button');
+    btn.setAttribute('data-bs-toggle', 'modal');
+    btn.setAttribute('data-bs-target', '#modal');
+    btn.setAttribute('data-id', `${postId}`);
+    btn.textContent = i18nextInstance.t('posts.btnPreview');
+
+    li.append(a, btn);
     ul.prepend(li);
   });
   container.append(ul);
@@ -93,18 +106,24 @@ const handlePosts = (elements, posts, i18nextInstance) => {
   elements.posts.append(container);
 };
 
-export default (elements, i18nextInstance) => (path, value, prevValue) => {
+const handleModal = (elements, post) => {
+  elements.modal.querySelector('.modal-title').textContent = post.title;
+  elements.modal.querySelector('.modal-body').textContent = post.description;
+  elements.modal.querySelector('.full-article').href = post.link;
+};
+
+export default (elements, i18nextInstance) => (path, value) => {
   switch (path) {
     case 'form.processState':
       handleProcessState(elements, value);
       break;
 
-    case 'form.feedback':
-      handleFeedback(elements, value, i18nextInstance);
-      break;
-
     case 'form.valid':
       handleFormState(elements, value);
+      break;
+
+    case 'form.feedback':
+      handleFeedback(elements, value, i18nextInstance);
       break;
 
     case 'feeds':
@@ -113,6 +132,10 @@ export default (elements, i18nextInstance) => (path, value, prevValue) => {
 
     case 'posts':
       handlePosts(elements, value, i18nextInstance);
+      break;
+
+    case 'previewPost':
+      handleModal(elements, value);
       break;
 
     default:

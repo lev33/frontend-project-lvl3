@@ -2,7 +2,7 @@ import onChange from 'on-change';
 import * as yup from 'yup';
 import i18next from 'i18next';
 import axios from 'axios';
-import _ from 'lodash';
+import { uniqueId, differenceBy } from 'lodash';
 import render from './render';
 import resources from './locales/resources';
 import parse from './parse';
@@ -15,6 +15,7 @@ const app = (i18nextInstance) => {
     feedback: document.querySelector('.feedback'),
     posts: document.querySelector('.posts'),
     feeds: document.querySelector('.feeds'),
+    modal: document.getElementById('modal'),
   };
   const state = onChange({
     form: {
@@ -30,6 +31,7 @@ const app = (i18nextInstance) => {
     urls: [],
     feeds: [],
     posts: [],
+    previewPost: null,
   }, render(elements, i18nextInstance));
 
   const proxify = (url) => {
@@ -39,8 +41,10 @@ const app = (i18nextInstance) => {
   };
 
   const addId = (posts, feedId) => posts.map((post) => {
-    const postId = _.uniqueId();
-    return { ...post, postId, feedId };
+    const postId = uniqueId();
+    return {
+      ...post, postId, feedId, viewed: false,
+    };
   });
 
   const updateFeed = (sourceUrl, feedId) => {
@@ -48,7 +52,7 @@ const app = (i18nextInstance) => {
       axios.get(proxify(sourceUrl))
         .then((response) => {
           const { items } = parse(response.data);
-          const newItems = _.differenceBy(items, state.posts, 'link');
+          const newItems = differenceBy(items, state.posts, 'link');
 
           if (newItems.length) {
             const newPosts = addId(newItems, feedId);
@@ -61,7 +65,7 @@ const app = (i18nextInstance) => {
     }, 5000);
   };
 
-  elements.form.addEventListener('submit', async (e) => {
+  elements.form.addEventListener('submit', (e) => {
     e.preventDefault();
     const formData = new FormData(elements.form);
     const sourceUrl = formData.get('url');
@@ -77,7 +81,7 @@ const app = (i18nextInstance) => {
       })
       .then((response) => {
         const { channel, items } = parse(response.data);
-        const feedId = _.uniqueId();
+        const feedId = uniqueId();
         const newFeed = { ...channel, feedId };
         const newPosts = addId(items, feedId);
         state.urls.push(sourceUrl);
@@ -99,13 +103,26 @@ const app = (i18nextInstance) => {
         state.form.processState = 'error';
       });
   });
+
+  elements.posts.addEventListener('click', (e) => {
+    const postId = e.target.dataset.id;
+    if (postId) {
+      state.posts = state.posts.map((post) => {
+        if (post.postId === postId) {
+          return { ...post, viewed: true };
+        }
+        return post;
+      });
+      state.previewPost = state.posts.find((post) => post.postId === postId);
+    }
+  });
 };
 
-export default async () => {
-  const i18nextInstance = i18next.createInstance({
+export default () => {
+  const i18nextInstance = i18next.createInstance();
+  i18nextInstance.init({
     lng: 'ru',
     resources,
-  });
-  await i18nextInstance.init();
-  app(i18nextInstance);
+  })
+    .then(() => app(i18nextInstance));
 };
