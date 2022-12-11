@@ -35,7 +35,7 @@ const app = (i18nextInstance) => {
   }, render(elements, i18nextInstance));
 
   const proxify = (url) => {
-    const proxy = new URL('https://hexlet-allorigins.herokuapp.com/get?disableCache=true&url=');
+    const proxy = new URL('https://allorigins.hexlet.app/get?disableCache=true&url=');
     proxy.searchParams.set('url', url);
     return proxy;
   };
